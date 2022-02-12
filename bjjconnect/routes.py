@@ -83,7 +83,15 @@ def profile():
     else:
         return redirect(url_for('login'))
 
-        if bcrypt.check_password_hash(current_user.password, form.password.data):
-            return render_template('about.html', title=current_user.username, user=current_user, form=form)
-        else:
-            flash('Login Unsuccessful. Please check email and password', 'danger')
+    if form.validate_on_submit():
+        user = current_user.get_current_object()
+        if bcrypt.check_password_hash(user.password, form.password.data):
+            if form.username.data:
+                user.username = form.username.data
+            if form.email.data:
+                user.email = form.username.data
+
+                db.session.commit()
+
+            return render_template('user.html', title=current_user.username, user=current_user, form=form)
+
