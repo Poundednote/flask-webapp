@@ -37,6 +37,7 @@ def register():
         return redirect(url_for('home'))
 
     if form.validate_on_submit():
+        # generates hashed password and stores gym in database
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = Student(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
@@ -66,9 +67,9 @@ def login():
         return redirect(url_for('home'))
 
     if form.validate_on_submit():
-        user = Student.query.filter_by(email=form.email.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
-            login_user(user, remember=form.remember.data)
+        user = Student.query.filter_by(email=form.email.data).first()  # finds matching user in db
+        if user and bcrypt.check_password_hash(user.password, form.password.data): # checks if user exists and password matches users
+            login_user(user, remember=form.remember.data)  # flask login modules handles user login and session data
             return redirect(url_for('home'))
         else:
             flash('Login Unsuccessful. Please check email and password', 'danger')
