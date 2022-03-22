@@ -59,6 +59,20 @@
   </div>
 
   <div class="form-group">
+    {{ form.gym.label(class="form-control-label") }}
+
+    {% if form.gym.errors %}
+      {{ form.gym(class="form-control is-invalid") }}
+      <div class="invalid-feedback">
+        {% for error in form.gym.errors %}
+          <span>{{ error }}</span>
+        {% endfor %}
+    {% else %}
+      {{ form.gym(class="form-control")}}
+    {% endif %} 
+  </div>
+
+  <div class="form-group">
     {{ form.submit(class="btn btn-primary") }}
   </div>
 <div class="border-top pt-3">

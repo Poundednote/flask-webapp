@@ -1,8 +1,8 @@
-from flask import render_template, url_for, flash, redirect, session
+from flask import render_template, url_for, flash, redirect, session, request, make_response
 from bjjconnect.forms import  RegistrationForm, LoginForm, GymRegistrationForm, UserForm
-from bjjconnect.models import Student, Gym
+from bjjconnect.models import Student, Gym, Post
 from bjjconnect import app, db, bcrypt
-from flask_login import login_user, current_user
+from flask_login import login_user, current_user, logout_user, login_required
 
 gyms = [
     {
@@ -22,7 +22,9 @@ gyms = [
 @app.route('/')
 @app.route('/home')
 def home():
-    return render_template('home.html', gyms=gyms)
+    user = current_user
+    posts = Post.query.all()
+    return render_template('home.html', gyms=gyms, posts=posts, user=user)
 
 @app.route('/about')
 def about():
@@ -37,9 +39,9 @@ def register():
         return redirect(url_for('home'))
 
     if form.validate_on_submit():
-        # generates hashed password and stores gym in database
+        # generates hashed password and stores user in database
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = Student(username=form.username.data, email=form.email.data, password=hashed_password)
+        user = Student(username=form.username.data, email=form.email.data, password=hashed_password, gym=form.gym.data)
         db.session.add(user)
         db.session.commit()
 
@@ -70,29 +72,45 @@ def login():
         user = Student.query.filter_by(email=form.email.data).first()  # finds matching user in db
         if user and bcrypt.check_password_hash(user.password, form.password.data): # checks if user exists and password matches users
             login_user(user, remember=form.remember.data)  # flask login modules handles user login and session data
-            return redirect(url_for('home'))
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('home'))
         else:
             flash('Login Unsuccessful. Please check email and password', 'danger')
 
     return render_template('login.html', title='Login', form=form)
 
-@app.route('/profile', methods=['GET', 'POST'])
-def profile():
+@app.route('/profile/<username>', methods=['GET', 'POST'])
+@login_required
+def profile(username):
     form = UserForm()
-    if current_user.is_authenticated:
-        return render_template('user.html', title=current_user.username, user=current_user, form=form)
-    else:
-        return redirect(url_for('login'))
 
     if form.validate_on_submit():
-        user = current_user.get_current_object()
+        user = current_user
         if bcrypt.check_password_hash(user.password, form.password.data):
             if form.username.data:
-                user.username = form.username.data
+                user.email = form.username.data 
+
             if form.email.data:
                 user.email = form.username.data
 
-                db.session.commit()
+            if form.gym.data:
+                user.gym = form.gym.data
 
-            return render_template('user.html', title=current_user.username, user=current_user, form=form)
+            db.session.commit()
 
+            flash(f'Changes Successful', 'success')
+
+        else:
+            flash(f'Changes Unsuccessful. Please check password', 'success')
+        
+    return render_template('user.html', title=current_user.username, user=current_user, form=form)
+        
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return make_response(render_template("404.html"), 404)
